@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_application_3/Screens/FamilyForm.dart';
 
-import 'package:flutter_application_3/Screens/SignUp/signup_screen.dart';
-import 'package:flutter_application_3/Screens/SignUp/widgets/FeedbackScreen.dart';
-import 'package:flutter_application_3/Screens/SignUp/widgets/FormScreen.dart';
+import 'package:flutter_application_3/Screens/FeedbackScreen.dart';
 
-import 'package:flutter_application_3/Screens/SignUp/widgets/signup_form_widgets.dart';
+import 'package:flutter_application_3/Screens/signup_form_widgets.dart';
 
-import 'Screens/login/login_screen.dart';
+import 'Screens/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'firebase_options.dart';
@@ -33,6 +31,6 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: FeedbackScreen());
+        home: LoginScreen());
   }
 }
