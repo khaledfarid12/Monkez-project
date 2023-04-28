@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_3/Screens/FamilyForm.dart';
 
 import 'package:flutter_application_3/Screens/FeedbackScreen.dart';
+import 'package:flutter_application_3/Screens/UploadDoucment.dart';
+import 'package:flutter_application_3/Screens/profile.dart';
 
 import 'package:flutter_application_3/Screens/signup_form_widgets.dart';
+import 'package:flutter_application_3/user.dart';
 
 import 'Screens/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -31,6 +34,6 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: LoginScreen());
+        home: userprofile());
   }
 }

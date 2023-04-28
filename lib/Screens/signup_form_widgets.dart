@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_3/Screens/FeedbackScreen.dart';
+import 'package:flutter_application_3/Screens/login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   @override
@@ -17,8 +19,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
-  bool _isLoading = false;
-  String? _errorMessage;
+  bool _passwordVisible = false;
+
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _usernameController.dispose();
+    _emailController.dispose();
+    _nationalIdController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _passwordVisible = !_passwordVisible;
+    });
+  }
+
+  Future<void> _register() async {
+    final form = _formKey.currentState;
+    if (form!.validate()) {
+      form.save();
+      try {
+        // Check if username, email, and national id are unique
+        final usernameSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: _usernameController.text)
+            .get();
+        if (usernameSnapshot.docs.isNotEmpty) {
+          throw 'Username already taken';
+        }
+        final emailSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: _emailController.text)
+            .get();
+        if (emailSnapshot.docs.isNotEmpty) {
+          throw 'Email already in use';
+        }
+        final nationalIdSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('nationalId', isEqualTo: _nationalIdController.text)
+            .get();
+        if (nationalIdSnapshot.docs.isNotEmpty) {
+          throw 'National ID already registered';
+        }
+
+        // Create user in Firebase Authentication
+        final newUser =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text,
+          password: _passwordController.text,
+        );
+
+        // Save user details in Firestore
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(newUser.user!.uid)
+            .set({
+          'firstName': _firstNameController.text,
+          'lastName': _lastNameController.text,
+          'username': _usernameController.text,
+          'email': _emailController.text,
+          'nationalId': _nationalIdController.text,
+        });
+
+        // Navigate to Home Screen
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => LoginScreen()));
+      } catch (e) {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         title: Text('Register'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: ListView(
@@ -36,7 +115,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _firstNameController,
                 decoration: InputDecoration(labelText: 'First Name'),
                 validator: (value) {
-                  if (value!.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Please enter your first name';
                   }
                   return null;
@@ -46,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _lastNameController,
                 decoration: InputDecoration(labelText: 'Last Name'),
                 validator: (value) {
-                  if (value!.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Please enter your last name';
                   }
                   return null;
@@ -56,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 controller: _usernameController,
                 decoration: InputDecoration(labelText: 'Username'),
                 validator: (value) {
-                  if (value!.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Please enter a username';
                   }
                   return null;
@@ -67,11 +146,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 decoration: InputDecoration(labelText: 'Email'),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Please enter your email';
-                  } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                      .hasMatch(value!)) {
-                    return 'Please enter a valid email';
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email address';
+                  }
+                  if (!value.contains('@')) {
+                    return 'Please enter a valid email address';
                   }
                   return null;
                 },
@@ -79,127 +158,67 @@ class _RegisterScreenState extends State<RegisterScreen> {
               TextFormField(
                 controller: _nationalIdController,
                 decoration: InputDecoration(labelText: 'National ID'),
+                keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value!.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Please enter your national ID';
+                  }
+                  if (value.length != 14) {
+                    return 'Please enter a valid national ID';
                   }
                   return null;
                 },
               ),
               TextFormField(
                 controller: _passwordController,
-                decoration: InputDecoration(labelText: 'Password'),
-                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(_passwordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: _togglePasswordVisibility,
+                  ),
+                ),
+                obscureText: !_passwordVisible,
                 validator: (value) {
-                  if (value!.isEmpty) {
+                  if (value == null || value.isEmpty) {
                     return 'Please enter a password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
                   }
                   return null;
                 },
               ),
               TextFormField(
                 controller: _confirmPasswordController,
-                decoration: InputDecoration(labelText: 'Confirm Password'),
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(_passwordVisible
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: _togglePasswordVisibility,
+                  ),
+                ),
                 obscureText: true,
                 validator: (value) {
-                  if (value!.isEmpty) {
-                    return 'Please confirm your password';
-                  } else if (value != _passwordController.text) {
+                  if (value != _passwordController.text) {
                     return 'Passwords do not match';
                   }
                   return null;
                 },
               ),
-              SizedBox(height: 20),
-              if (_isLoading)
-                Center(
-                  child: CircularProgressIndicator(),
-                )
-              else
-                ElevatedButton(
-                  child: Text('Register'),
-                  onPressed: _register,
-                ),
-              if (_errorMessage != null) ...[
-                SizedBox(height: 20),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+              SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _register,
+                child: Text('Register'),
+              ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  void _register() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-        _errorMessage = null;
-      });
-
-      final firstName = _firstNameController.text.trim();
-      final lastName = _lastNameController.text.trim();
-      final username = _usernameController.text.trim();
-      final email = _emailController.text.trim();
-      final nationalId = _nationalIdController.text.trim();
-      final password = _passwordController.text.trim();
-
-      try {
-        // Check if the username is already taken
-        final usernameQuerySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('username', isEqualTo: username)
-            .get();
-        if (usernameQuerySnapshot.docs.isNotEmpty) {
-          throw 'Username is already taken';
-        }
-
-        // Check if the email is already registered
-        final emailQuerySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: email)
-            .get();
-        if (emailQuerySnapshot.docs.isNotEmpty) {
-          throw 'Email is already registered';
-        }
-
-        // Check if the national ID is already registered
-        final nationalIdQuerySnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('nationalId', isEqualTo: nationalId)
-            .get();
-        if (nationalIdQuerySnapshot.docs.isNotEmpty) {
-          throw 'National ID is already registered';
-        }
-
-        // Register the user
-        final userCredential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-
-        // Save additional user data to Firestore
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userCredential.user?.uid)
-            .set({
-          'firstName': firstName,
-          'lastName': lastName,
-          'username': username,
-          'email': email,
-          'nationalId': nationalId,
-        });
-
-        Navigator.pop(context);
-      } catch (error) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = error.toString();
-        });
-      }
-    }
   }
 }
